@@ -1,6 +1,7 @@
 # Web Architecture: Frontend, Backend, Database Flow
 
 ## 📌 Overview
+<img width="745" height="277" alt="Screenshot 2026-07-04 111741" src="https://github.com/user-attachments/assets/73af8859-b27b-45c7-af5e-20340d4a8974" />
 
 This diagram shows how a modern web application works using three layers:
 - Frontend (UI)
