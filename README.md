@@ -293,3 +293,68 @@ def update_product(id: int, product: Product):
 This example uses an in-memory Python list, so all changes are lost when the server restarts.
 
 In real applications, PUT requests usually update data stored in a database such as PostgreSQL or MySQL.
+
+### 🔴 DELETE - Delete Data
+
+Used to remove existing data from the server.
+
+The client sends an ID, and the server deletes the matching item from memory or database.
+
+---
+
+## 🧠 How DELETE works
+
+1. Client sends the ID of the item to delete.
+2. Server searches for the item in the data list.
+3. If found, the item is removed.
+4. Server sends a confirmation message.
+5. If not found, an error message is returned.
+
+---
+
+## 📦 Example in FastAPI
+
+```python
+@app.delete("/product")
+def delete_product(id: int):
+    for i in range(len(products)):
+        if products[i].id == id:
+            del products[i]
+            return "Product Deleted"
+    return "No Product Found"
+```
+<img width="1075" height="295" alt="image" src="https://github.com/user-attachments/assets/a7b3dcb3-5195-4470-ac85-1a88a9b72041" />
+<img width="1046" height="177" alt="image" src="https://github.com/user-attachments/assets/7200e9f9-dfdf-4d97-950a-007cb0666141" />
+
+---
+
+## 📤 What happens here
+
+- The `id` is received from the client.
+- The server loops through the `products` list.
+- If a matching product is found:
+  - It is removed using `del`.
+  - A success message is returned.
+- If no match is found:
+  - A failure message is returned.
+
+---
+
+## ⚡ Key Points
+
+- DELETE is used to **remove data permanently**.
+- It identifies data using an **ID**.
+- In this example, data is stored in a Python list (temporary storage).
+- Changes are lost when the server restarts.
+
+---
+
+## 🧠 Important Note
+
+In real-world applications:
+- DELETE requests usually use a path parameter like:
+  ```python
+  @app.delete("/product/{id}")
+  ```
+- Data is deleted from a database (not a list).
+- Proper status codes like `200 OK` or `404 Not Found` are used instead of plain strings.
