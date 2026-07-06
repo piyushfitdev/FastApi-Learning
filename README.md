@@ -13,11 +13,47 @@
     - [What is models.py and why we use it](#what-is-modelspy-and-why-we-use-it)
       - [Product Class (models.py)](#product-class-modelspy)
       - [Main FastAPI Code](#main-fastapi-code)
-
   - [POST - Create Data](#post---create-data)
   - [PUT - Update Data](#put---update-data)
   - [DELETE - Delete Data](#delete---delete-data)
 
+##PostgreSql
+- [Connecting FastAPI with PostgreSQL](#connecting-fastapi-with-postgresql)
+  - [Create `database.py`](#create-databasepy)
+  - [Create `database_models.py`](#create-database_modelspy)
+  - [Changes in `main.py`](#changes-in-mainpy)
+- [Install Required Libraries](#install-required-libraries)
+  - [Connecting FastAPI with PostgreSQL](#connecting-fastapi-with-postgresql)
+  - [Create `database.py`](#create-databasepy)
+  - [Create `database_models.py`](#create-database_modelspy)
+  - [Changes in `main.py`](#changes-in-mainpy)
+  - [Creating Database Tables](#creating-database-tables)
+  - [Fetching Data from Database](#fetching-data-from-database)
+- [Insert Initial Data into Database](#insert-initial-data-into-database)
+  - [Creating `init_db()`](#creating-init_db)
+  - [Understanding `model_dump()`](#understanding-model_dump)
+  - [Understanding `**` (Double Asterisk)](#understanding--double-asterisk)
+- [Dependency Injection in FastAPI](#dependency-injection-in-fastapi)
+  - [Creating `get_db()`](#creating-get_db)
+  - [Using `Depends()`](#using-depends)
+  - [Fetching Data Using Dependency Injection](#fetching-data-using-dependency-injection)
+  - [Get Product by ID](#get-product-by-id)
+    - [Finding a Product Using `filter()`](#finding-a-product-using-filter)
+    - [Using `first()`](#using-first)
+  - [Add a Product to Database](#add-a-product-to-database)
+    - [Adding a Product](#adding-a-product)
+    - [Using `db.add()`](#using-dbadd)
+    - [Using `db.commit()`](#using-dbcommit)
+  - [Update Product in Database](#update-product-in-database)
+    - [Updating a Product](#updating-a-product)
+    - [Finding the Product](#finding-the-product)
+    - [Updating Product Details](#updating-product-details)
+    - [Saving Changes with `db.commit()`](#saving-changes-with-dbcommit)
+  - [Delete Product from Database](#delete-product-from-database)
+    - [Deleting a Product](#deleting-a-product)
+    - [Finding the Product](#finding-the-product)
+    - [Using `db.delete()`](#using-dbdelete)
+    - [Saving Changes with `db.commit()`](#saving-changes-with-dbcommit)
 - [CORS Middleware](#cors-middleware)
   - [What is CORS?](#what-is-cors)
   - [Adding CORS Middleware](#adding-cors-middleware)
@@ -363,6 +399,764 @@ In real-world applications:
 - Data is deleted from a database (not a list).
 - Proper status codes like `200 OK` or `404 Not Found` are used instead of plain strings.
 
+---
+
+# Connecting FastAPI with PostgreSQL
+
+To connect your FastAPI backend with a PostgreSQL database, create two new files:
+
+- `database.py`
+- `database_models.py`
+
+These files help separate **database connection logic** from **database models**, making the project clean and organized.
+
+---
+
+## Create `database.py`
+
+This file is responsible for creating the connection between FastAPI and PostgreSQL.
+
+```python
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+db_url = "postgresql://postgres:123@localhost:5432/fastapi"
+
+# Connect Python with PostgreSQL
+engine = create_engine(db_url)
+
+# Create database session
+session = sessionmaker(
+    autocommit=False,
+    autoflush=False,
+    bind=engine
+)
+```
+
+### 🧠 Explanation
+
+- `create_engine()` creates a connection between Python and PostgreSQL.
+- `db_url` contains the database credentials.
+- `sessionmaker()` is used to create database sessions for performing CRUD operations.
+
+---
+
+## Create `database_models.py`
+
+This file contains all the database tables (models).
+
+```python
+from sqlalchemy import Column, Integer, String, Float
+from sqlalchemy.orm import declarative_base
+
+Base = declarative_base()
+
+class Product(Base):
+
+    __tablename__ = "product"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String)
+    description = Column(String)
+    price = Column(Float)
+    quantity = Column(Integer)
+```
+
+### 🧠 Explanation
+
+- `Base` is the parent class for all database models.
+- Each class represents one database table.
+- `__tablename__` specifies the table name inside PostgreSQL.
+- `Column()` defines the columns of the table along with their data types.
+
+---
+
+## Changes in `main.py`
+
+Import the database connection and models.
+
+```python
+from database import session, engine
+import database_models
+```
+
+Then create all tables automatically when the server starts.
+
+```python
+database_models.Base.metadata.create_all(bind=engine)
+```
+
+### 🧠 What does this do?
+
+- Checks whether the tables already exist.
+- If a table does **not** exist, SQLAlchemy creates it automatically.
+- If the table already exists, nothing happens.
+
+This only creates tables—it does **not** delete or overwrite existing data.
+
+---
+
+## 📌 Summary
+
+| File | Purpose |
+|------|---------|
+| `database.py` | Connects FastAPI to PostgreSQL and creates database sessions |
+| `database_models.py` | Defines database tables (models) |
+| `Base.metadata.create_all()` | Creates tables automatically if they don't already exist |
+
+
+---
+
+# Install Required Libraries
+
+Install SQLAlchemy and PostgreSQL driver using:
+
+```bash
+pip install sqlalchemy psycopg2
+```
+
+### 🧠 Why these libraries?
+
+### SQLAlchemy
+- SQLAlchemy is an ORM (Object Relational Mapper).
+- It lets you interact with the database using Python code instead of writing long SQL queries.
+- It makes database operations cleaner, easier to read, and easier to maintain.
+
+### psycopg2
+- `psycopg2` is the PostgreSQL driver for Python.
+- It creates the connection between the FastAPI backend and the PostgreSQL database.
+- Without it, Python cannot communicate with PostgreSQL.
+
+---
+
+# Connecting FastAPI with PostgreSQL
+
+To connect your FastAPI backend with a PostgreSQL database, create two new files:
+
+- `database.py`
+- `database_models.py`
+
+These files separate the database connection from the database models, making the project clean and organized.
+
+---
+
+## Create `database.py`
+
+This file creates the connection between Python and PostgreSQL.
+
+```python
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+db_url = "postgresql://postgres:123@localhost:5432/fastapi"
+
+# Connect Python with PostgreSQL
+engine = create_engine(db_url)
+
+# Create database session
+session = sessionmaker(
+    autocommit=False,
+    autoflush=False,
+    bind=engine
+)
+```
+
+### 🧠 Explanation
+
+- `create_engine()` creates the connection with PostgreSQL.
+- `db_url` stores the database connection details.
+- `sessionmaker()` creates sessions that are used to perform CRUD operations.
+
+---
+
+## Create `database_models.py`
+
+This file defines the database tables.
+
+```python
+from sqlalchemy import Column, Integer, String, Float
+from sqlalchemy.orm import declarative_base
+
+Base = declarative_base()
+
+class Product(Base):
+
+    __tablename__ = "product"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String)
+    description = Column(String)
+    price = Column(Float)
+    quantity = Column(Integer)
+```
+
+### 🧠 Explanation
+
+- `Base` is the parent class for all database models.
+- Every class represents one database table.
+- `__tablename__` specifies the table name.
+- `Column()` defines each column and its data type.
+
+---
+
+## Changes in `main.py`
+
+Add these imports:
+
+```python
+from database import session, engine
+import database_models
+```
+
+---
+
+## Creating Database Tables
+
+After creating the FastAPI application:
+
+```python
+app = FastAPI()
+
+database_models.Base.metadata.create_all(bind=engine)
+```
+
+### 🧠 What does this do?
+
+- Connects to the database.
+- Checks if the tables already exist.
+- If a table does not exist, SQLAlchemy creates it automatically.
+- Existing tables are not modified or deleted.
+
+---
+
+## Fetching Data from Database
+
+Update the `/products` endpoint:
+
+```python
+@app.get("/products")
+def get_all_products():
+    db = session()
+    db.query()
+    return products
+```
+
+### 🧠 Explanation
+
+- `db = session()` creates a new database session.
+- `db.query()` is used to query data from the database.
+- Later, you'll specify which table to query, for example:
+
+```python
+db.query(database_models.Product)
+```
+
+or
+
+```python
+db.query(database_models.Product).all()
+```
+
+to fetch all products from the database.
+
+---
+
+## 📌 Summary
+
+| File | Purpose |
+|------|---------|
+| `database.py` | Creates the PostgreSQL connection and database session |
+| `database_models.py` | Defines the database tables (models) |
+| `Base.metadata.create_all()` | Creates database tables automatically if they don't exist |
+| `session()` | Opens a database session |
+| `query()` | Retrieves data from the database |
+
+
+---
+
+# Dependency Injection in FastAPI
+
+Dependency Injection is a FastAPI feature that automatically provides the resources a function needs.
+
+Instead of creating a database session inside every API function, FastAPI creates and manages it for us.
+
+This keeps the code clean, reusable, and easier to maintain.
+
+---
+
+## Creating `get_db()`
+
+```python
+def get_db():
+    db = session()
+    try:
+        yield db
+    finally:
+        db.close()
+```
+
+### 🧠 What does this function do?
+
+- Creates a new database session.
+- Provides (`yield`) the session to the API endpoint.
+- Automatically closes the session after the request is completed.
+
+Using `finally` ensures that the database connection is always closed, even if an error occurs.
+
+---
+
+## Using `Depends()`
+
+```python
+db: Session = Depends(get_db)
+```
+
+### 🧠 What is `Depends()`?
+
+`Depends()` tells FastAPI:
+
+> "Before executing this API, call `get_db()` and provide its returned database session."
+
+FastAPI automatically:
+- Calls `get_db()`
+- Gets the database session
+- Passes it to the API function
+- Closes the session after the request is completed
+
+This process is called **Dependency Injection**.
+
+---
+
+## Fetching Data Using Dependency Injection
+
+```python
+from fastapi import Depends
+from sqlalchemy.orm import Session
+
+@app.get("/products")
+def get_all_products(db: Session = Depends(get_db)):
+
+    db_products = db.query(database_models.Product).all()
+    return db_products
+```
+
+---
+
+## 🧠 How this works
+
+1. A client sends a request to `/products`.
+2. FastAPI sees `Depends(get_db)`.
+3. It calls `get_db()`.
+4. A database session is created.
+5. The session is passed to the `db` parameter.
+6. The query fetches all products from the database.
+7. After the response is sent, the database session is automatically closed.
+
+---
+
+## 📌 Why use Dependency Injection?
+
+- No need to create a database session inside every API.
+- Automatically opens and closes database connections.
+- Makes the code clean and reusable.
+- Prevents database connection leaks.
+- Recommended approach for FastAPI applications.
+
+---
+
+## 📌 Summary
+
+| Function | Purpose |
+|----------|---------|
+| `get_db()` | Creates and manages a database session |
+| `yield` | Temporarily provides the session to the API |
+| `Depends()` | Tells FastAPI to automatically inject the dependency |
+| `db: Session` | Receives the database session created by `get_db()` |
+
+---
+
+# Get Product by ID
+
+This API is used to retrieve a single product from the database using its unique **ID**.
+
+---
+
+## Example
+
+```python
+@app.get("/product/{id}")
+def get_product_by_id(id: int, db: Session = Depends(get_db)):
+    db_product = db.query(database_models.Product).filter(
+        database_models.Product.id == id
+    ).first()
+
+    if db_product:
+        return db_product
+
+    return "Product not found"
+```
+
+---
+
+## 🧠 How it works
+
+1. The client sends a request with a product ID.
+2. FastAPI receives the `id` from the URL.
+3. A database session is automatically provided using `Depends(get_db)`.
+4. SQLAlchemy searches the `Product` table.
+5. If a matching product is found, it is returned.
+6. Otherwise, a **"Product not found"** message is returned.
+
+---
+
+## Finding a Product Using `filter()`
+
+```python
+db.query(database_models.Product).filter(database_models.Product.id == id)
+```
+
+### 🧠 What does `filter()` do?
+
+`filter()` is used to search for records that satisfy a specific condition.
+
+In this example, it searches for the product whose `id` matches the value received from the URL.
+
+Example:
+
+```python
+database_models.Product.id == id
+```
+
+means:
+
+> Find the product where the **Product ID is equal to the requested ID**.
+
+---
+
+## Using `first()`
+
+```python
+.first()
+```
+
+### 🧠 What does `first()` do?
+
+`first()` returns the **first matching record** from the query.
+
+If no matching record exists, it returns `None`.
+
+Since `id` is a **Primary Key**, there can only be one matching product.
+
+Using `first()` retrieves that single product directly.
+
+---
+
+## 📌 Why use `filter()` and `first()` together?
+
+- `filter()` selects the matching record.
+- `first()` retrieves the first matching result.
+- If no record matches, `first()` returns `None`.
+
+Together they make it easy to fetch a single product from the database.
+
+---
+
+## 📌 Summary
+
+| Function | Purpose |
+|----------|---------|
+| `db.query()` | Selects the table to query |
+| `filter()` | Finds records matching a condition |
+| `first()` | Returns the first matching record or `None` |
+| `Depends(get_db)` | Automatically provides a database session |
+
+---
+
+# Add a Product to Database
+
+This API is used to insert a new product into the PostgreSQL database.
+
+---
+
+## Adding a Product
+
+```python
+@app.post("/product")
+def add_product(product: Product, db: Session = Depends(get_db)):
+    db.add(database_models.Product(**product.model_dump()))
+    db.commit()
+    return product
+```
+
+---
+
+## 🧠 How it works
+
+1. The client sends a new product in JSON format.
+2. FastAPI converts the JSON into a Pydantic `Product` object.
+3. `model_dump()` converts the Pydantic object into a Python dictionary.
+4. `**` unpacks the dictionary into keyword arguments.
+5. A SQLAlchemy `Product` object is created.
+6. `db.add()` adds the object to the current database session.
+7. `db.commit()` permanently saves the changes to the database.
+8. The newly added product is returned as the response.
+
+---
+
+## Using `db.add()`
+
+```python
+db.add(database_models.Product(**product.model_dump()))
+```
+
+### 🧠 What does `db.add()` do?
+
+- Adds a new object to the current database session.
+- The data is **not saved immediately**.
+- The object waits in the session until `db.commit()` is called.
+
+---
+
+## Using `db.commit()`
+
+```python
+db.commit()
+```
+
+### 🧠 What does `db.commit()` do?
+
+`db.commit()` permanently saves all pending changes to the database.
+
+Without calling `db.commit()`:
+- The product is added only to the current session.
+- The database is **not updated**.
+- The new product will not be stored permanently.
+
+---
+
+## 📌 Why is `db.commit()` important?
+
+`db.commit()` is one of the most important database operations.
+
+It is responsible for:
+- Saving new records
+- Updating existing records
+- Deleting records
+
+Without it, the database remains unchanged.
+
+---
+
+## 📌 Summary
+
+| Function | Purpose |
+|----------|---------|
+| `db.add()` | Adds a new object to the current database session |
+| `model_dump()` | Converts a Pydantic model into a Python dictionary |
+| `**` | Unpacks the dictionary into keyword arguments |
+| `db.commit()` | Permanently saves all changes to the database |
+
+---
+
+# Update Product in Database
+
+This API is used to update an existing product in the PostgreSQL database.
+
+The product is searched using its **ID**. If it exists, its details are updated with the new values sent by the client.
+
+---
+
+## Updating a Product
+
+```python
+@app.put("/product")
+def update_product(id: int, product: Product, db: Session = Depends(get_db)):
+    db_product = db.query(database_models.Product).filter(database_models.Product.id == id).first()
+
+    if db_product:
+        db_product.name = product.name
+        db_product.description = product.description
+        db_product.price = product.price
+        db_product.quantity = product.quantity
+
+        db.commit()
+
+        return "Product Updated"
+
+    return "No Product Found"
+```
+
+---
+
+## 🧠 How it works
+
+1. The client sends the product ID and updated product information.
+2. FastAPI provides a database session using `Depends(get_db)`.
+3. The database is searched for the product with the given ID.
+4. If the product exists, its values are updated.
+5. `db.commit()` permanently saves the changes.
+6. If the product is not found, an error message is returned.
+
+---
+
+## Finding the Product
+
+```python
+db_product = db.query(database_models.Product)\
+    .filter(database_models.Product.id == id)\
+    .first()
+```
+
+### 🧠 What does this do?
+
+- Searches the **Product** table.
+- Finds the product whose ID matches the given ID.
+- Returns the product if found.
+- Returns `None` if no matching product exists.
+
+---
+
+## Updating Product Details
+
+```python
+db_product.name = product.name
+db_product.description = product.description
+db_product.price = product.price
+db_product.quantity = product.quantity
+```
+
+### 🧠 What happens here?
+
+Each field of the existing database record is replaced with the new values received from the client.
+
+Only the selected product is updated.
+
+---
+
+## Saving Changes with `db.commit()`
+
+```python
+db.commit()
+```
+
+### 🧠 Why is `db.commit()` important?
+
+`db.commit()` permanently saves the updated information to the database.
+
+Without calling `db.commit()`:
+- The values are changed only in memory.
+- The database remains unchanged.
+- The updates are lost after the request ends.
+
+---
+
+## 📌 Summary
+
+| Function | Purpose |
+|----------|---------|
+| `db.query()` | Selects the database table |
+| `filter()` | Finds the product using its ID |
+| `first()` | Returns the matching product |
+| `db.commit()` | Saves the updated data permanently |
+
+---
+
+# Delete Product from Database
+
+This API is used to permanently delete a product from the PostgreSQL database.
+
+The product is searched using its **ID**. If the product exists, it is removed from the database.
+
+---
+
+## Deleting a Product
+
+```python
+@app.delete("/product")
+def delete_product(id: int, db: Session = Depends(get_db)):
+    db_product = db.query(database_models.Product).filter(
+        database_models.Product.id == id
+    ).first()
+
+    if db_product:
+        db.delete(db_product)
+        db.commit()
+        return "Product Deleted Successfully"
+
+    return "No Product Found"
+```
+
+---
+
+## 🧠 How it works
+
+1. The client sends the product ID.
+2. FastAPI automatically provides a database session using `Depends(get_db)`.
+3. The database is searched for the product with the given ID.
+4. If the product exists:
+   - It is deleted from the database session.
+   - `db.commit()` permanently saves the deletion.
+5. If the product does not exist, an error message is returned.
+
+---
+
+## Finding the Product
+
+```python
+db_product = db.query(database_models.Product)\
+    .filter(database_models.Product.id == id)\
+    .first()
+```
+
+### 🧠 What does this do?
+
+- Searches the **Product** table.
+- Finds the product whose ID matches the given ID.
+- Returns the matching product.
+- Returns `None` if no product is found.
+
+---
+
+## Using `db.delete()`
+
+```python
+db.delete(db_product)
+```
+
+### 🧠 What does `db.delete()` do?
+
+- Marks the selected object for deletion.
+- The record is **not removed immediately**.
+- The deletion becomes permanent only after calling `db.commit()`.
+
+---
+
+## Saving Changes with `db.commit()`
+
+```python
+db.commit()
+```
+
+### 🧠 Why is `db.commit()` important?
+
+`db.commit()` permanently saves the deletion in the database.
+
+Without calling `db.commit()`:
+- The product is only marked for deletion in the current session.
+- The database remains unchanged.
+- The deleted product will still exist in the database.
+
+---
+
+## 📌 Summary
+
+| Function | Purpose |
+|----------|---------|
+| `db.query()` | Selects the database table |
+| `filter()` | Finds the product using its ID |
+| `first()` | Returns the matching product |
+| `db.delete()` | Marks the product for deletion |
+| `db.commit()` | Permanently deletes the product from the database |
 
 ---
 
