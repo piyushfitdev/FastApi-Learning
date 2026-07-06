@@ -655,6 +655,169 @@ to fetch all products from the database.
 | `session()` | Opens a database session |
 | `query()` | Retrieves data from the database |
 
+---
+
+# Insert Initial Data into Database
+
+The `init_db()` function is used to insert the products stored in the Python list into the PostgreSQL database.
+
+This is useful when you want to populate the database with some initial data.
+
+---
+
+## Creating `init_db()`
+
+```python
+def init_db():
+    db = session()
+
+    for product in products:
+        db.add(database_models.Product(**product.model_dump()))
+
+    db.commit()
+```
+
+Call the function once:
+
+```python
+init_db()
+```
+
+---
+
+## 🧠 How it works
+
+1. Create a new database session.
+2. Loop through every product in the `products` list.
+3. Convert the Pydantic model into a dictionary.
+4. Create a SQLAlchemy `Product` object.
+5. Add it to the database session.
+6. Save all changes using `db.commit()`.
+
+---
+
+## Understanding `model_dump()`
+
+```python
+product.model_dump()
+```
+
+`model_dump()` is a Pydantic function that converts a model object into a Python dictionary.
+
+### Example
+
+Pydantic object:
+
+```python
+Product(
+    id=1,
+    name="Phone",
+    description="Budget Phone",
+    price=99,
+    quantity=10
+)
+```
+
+After calling:
+
+```python
+product.model_dump()
+```
+
+Output:
+
+```python
+{
+    "id": 1,
+    "name": "Phone",
+    "description": "Budget Phone",
+    "price": 99,
+    "quantity": 10
+}
+```
+
+This dictionary can then be used to create a SQLAlchemy model.
+
+---
+
+## Understanding `**` (Double Asterisk)
+
+The `**` operator is used to unpack a dictionary into keyword arguments.
+
+Example:
+
+```python
+data = {
+    "id": 1,
+    "name": "Phone",
+    "description": "Budget Phone",
+    "price": 99,
+    "quantity": 10
+}
+```
+
+Instead of writing:
+
+```python
+database_models.Product(
+    id=data["id"],
+    name=data["name"],
+    description=data["description"],
+    price=data["price"],
+    quantity=data["quantity"]
+)
+```
+
+You can simply write:
+
+```python
+database_models.Product(**data)
+```
+
+The `**` operator automatically converts the dictionary into:
+
+```python
+database_models.Product(
+    id=1,
+    name="Phone",
+    description="Budget Phone",
+    price=99,
+    quantity=10
+)
+```
+
+This makes the code shorter, cleaner, and easier to maintain.
+
+---
+
+## 📌 Why use `model_dump()` with `**`?
+
+- `model_dump()` converts a Pydantic object into a dictionary.
+- `**` unpacks that dictionary into keyword arguments.
+- SQLAlchemy models expect keyword arguments when creating new objects.
+- Together, they make it easy to convert a Pydantic model into a SQLAlchemy model.
+
+---
+
+## ⚠️ Important
+
+After adding objects using:
+
+```python
+db.add(...)
+```
+
+the data is **not** saved immediately.
+
+You must call:
+
+```python
+db.commit()
+```
+
+to permanently store the data in the PostgreSQL database.
+
+Without `commit()`, the inserted data will not be saved.
 
 ---
 
