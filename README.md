@@ -44,6 +44,24 @@
 ## 🌐 Frontend Integration
 - [CORS Middleware](#cors-middleware)
 
+---
+## 🔐 JWT Authentication
+- [Installing JWT Dependencies](#installing-jwt-dependencies)
+  - [python-jose](#python-jose)
+  - [passlib](#passlib)
+  - [python-multipart](#python-multipart)
+- [JWT Authentication Setup](#jwt-authentication-setup)
+  - [Create `auth.py`](#create-authpy)
+  - [Create APIRouter](#create-apirouter)
+  - [JWT Secret Key](#jwt-secret-key)
+  - [Password Hashing with `CryptContext`](#password-hashing-with-cryptcontext)
+  - [OAuth2 Bearer Authentication](#oauth2-bearer-authentication)
+  - [Request Models](#request-models)
+  - [Database Dependency](#database-dependency)
+  - [Create User API](#create-user-api)
+  - [Creating a New User](#creating-a-new-user)
+  - [Hashing the Password](#hashing-the-password)
+  - [Saving User to Database](#saving-user-to-database)
 
 ---
 
@@ -1507,3 +1525,470 @@ By adding `CORSMiddleware`, you tell the browser that the frontend is allowed to
 | `CORSMiddleware` | Enables Cross-Origin Resource Sharing |
 | `allow_origins` | Specifies which frontend URLs can access the backend |
 | `allow_methods` | Specifies which HTTP methods are allowed |
+
+---
+
+# Installing JWT Dependencies
+
+Before implementing JWT Authentication in FastAPI, install the required libraries.
+
+```bash
+pip install "python-jose[cryptography]"
+pip install "passlib[bcrypt]"
+pip install python-multipart
+```
+
+These libraries provide everything needed to create secure authentication using JWT.
+
+---
+
+## python-jose
+
+```bash
+pip install "python-jose[cryptography]"
+```
+
+### 🧠 Purpose
+
+`python-jose` is used to **create, sign, verify, and decode JWT (JSON Web Tokens).**
+
+It helps FastAPI:
+
+- Generate JWT access tokens
+- Verify whether a token is valid
+- Decode the information stored inside a token
+- Detect expired or invalid tokens
+
+Without this library, FastAPI cannot work with JWT authentication.
+
+---
+
+## passlib
+
+```bash
+pip install "passlib[bcrypt]"
+```
+
+### 🧠 Purpose
+
+`passlib` is used to **hash passwords** before storing them in the database.
+
+Instead of saving:
+
+```text
+password123
+```
+
+it stores something like:
+
+```text
+$2b$12$R2x7r...
+```
+
+This protects user passwords if the database is ever leaked.
+
+It is also used to verify a user's password during login.
+
+---
+
+## python-multipart
+
+```bash
+pip install python-multipart
+```
+
+### 🧠 Purpose
+
+`python-multipart` allows FastAPI to receive data submitted through HTML forms.
+
+It is commonly used when implementing a login endpoint where the username and password are sent as form data.
+
+Without this package, FastAPI cannot process form submissions using `Form()` or `OAuth2PasswordRequestForm`.
+
+---
+
+## 📌 Summary
+
+| Library | Purpose |
+|---------|---------|
+| `python-jose` | Create, verify and decode JWT tokens |
+| `passlib` | Hash and verify passwords securely |
+| `python-multipart` | Receive form data (login forms, HTML forms) |
+
+---
+
+# JWT Authentication Setup
+
+To keep the authentication code separate from the main application, create a new file named:
+
+```text
+auth.py
+```
+
+This file will contain all authentication-related code such as:
+
+- User Registration
+- User Login
+- JWT Token Generation
+- Token Verification
+- Password Hashing
+
+Keeping authentication in a separate file makes the project clean and easier to maintain.
+
+---
+
+## Create `auth.py`
+
+Import the following modules:
+
+```python
+from datetime import timedelta, datetime
+from typing import Annotated
+from warnings import deprecated
+
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
+from sqlalchemy.orm import Session
+from starlette import status
+
+from database import session
+from models import Users
+
+from passlib.context import CryptContext
+from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
+from jose import jwt, JWTError
+```
+
+### 🧠 Why are these imports needed?
+
+| Import | Purpose |
+|---------|---------|
+| `datetime` | Used to set token expiration time |
+| `timedelta` | Adds time to the current date for token expiry |
+| `APIRouter` | Creates a separate router for authentication APIs |
+| `Depends` | Injects dependencies like database sessions |
+| `HTTPException` | Returns API errors such as invalid login |
+| `BaseModel` | Creates request and response models |
+| `Session` | Performs database operations |
+| `CryptContext` | Hashes and verifies passwords |
+| `OAuth2PasswordBearer` | Extracts JWT tokens from requests |
+| `OAuth2PasswordRequestForm` | Receives username and password from login forms |
+| `jwt` | Creates and verifies JWT tokens |
+| `JWTError` | Handles invalid or expired tokens |
+
+---
+
+## Create APIRouter
+
+```python
+router = APIRouter(
+    prefix="/auth",
+    tags=["auth"]
+)
+```
+
+### 🧠 What is APIRouter?
+
+`APIRouter` is used to organize related API endpoints into separate files.
+
+Instead of writing every API inside `main.py`, authentication APIs are moved into `auth.py`.
+
+The `prefix="/auth"` automatically adds `/auth` before every endpoint.
+
+Example:
+
+```python
+@router.post("/register")
+```
+
+becomes
+
+```text
+/auth/register
+```
+
+The `tags=["auth"]` groups all authentication APIs together inside Swagger Docs (`/docs`).
+
+---
+
+## JWT Secret Key
+
+```python
+SECRET_KEY = "197b2c37c391bed93fe80344fe73b806947a65e36206e05a1a23c2fa12702fe3"
+
+ALGORITHM = "HS256"
+```
+
+### 🧠 What is `SECRET_KEY`?
+
+The secret key is used to digitally sign JWT tokens.
+
+It ensures that:
+
+- Tokens cannot be modified by users.
+- The server can verify that a token was created by your application.
+
+Keep this key secret.
+
+In real-world projects, it is stored in an environment variable (`.env`) instead of writing it directly in the code.
+
+---
+
+### 🧠 What is `HS256`?
+
+`HS256` is the hashing algorithm used to sign and verify JWT tokens.
+
+When a token is created, this algorithm uses the `SECRET_KEY` to generate a secure digital signature.
+
+---
+
+## Password Hashing with `CryptContext`
+
+```python
+bcrypt_context = CryptContext(
+    schemes=["bcrypt"],
+    deprecated="auto"
+)
+```
+
+### 🧠 What does this do?
+
+Passwords should **never** be stored as plain text.
+
+`CryptContext` automatically hashes passwords using the **bcrypt** algorithm.
+
+Example:
+
+Instead of storing:
+
+```text
+password123
+```
+
+It stores something similar to:
+
+```text
+$2b$12$7KJk8L...
+```
+
+During login, it compares the entered password with the hashed password stored in the database.
+
+---
+
+## OAuth2 Bearer Authentication
+
+```python
+oauth2_bearer = OAuth2PasswordBearer(
+    tokenUrl="auth/token"
+)
+```
+
+### 🧠 What is this?
+
+`OAuth2PasswordBearer` tells FastAPI where users will obtain their JWT token.
+
+Later, a login endpoint like:
+
+```text
+POST /auth/token
+```
+
+will generate a JWT token.
+
+Whenever a protected API is accessed, FastAPI automatically reads the token from the request's **Authorization** header.
+
+---
+
+## Request Models
+
+### Create User Request
+
+```python
+class CreateUserRequest(BaseModel):
+    username: str
+    password: str
+```
+
+### 🧠 Purpose
+
+This Pydantic model validates the data received while creating a new user.
+
+Example request:
+
+```json
+{
+  "username": "piyush",
+  "password": "mypassword123"
+}
+```
+
+---
+
+### Token Response
+
+```python
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+```
+
+### 🧠 Purpose
+
+This model defines the response returned after successful login.
+
+Example response:
+
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIs...",
+  "token_type": "bearer"
+}
+```
+
+---
+
+## Database Dependency
+
+```python
+def get_db():
+    db = session()
+    try:
+        yield db
+    finally:
+        db.close()
+```
+
+### 🧠 What does this do?
+
+This function creates a database session for every API request.
+
+FastAPI automatically:
+
+1. Creates a new database session.
+2. Passes it to the API.
+3. Closes it after the request finishes.
+
+Using `yield` ensures that the database connection is always closed, even if an error occurs.
+
+---
+
+## 📌 Summary
+
+| Component | Purpose |
+|-----------|---------|
+| `APIRouter` | Groups authentication APIs into a separate router |
+| `SECRET_KEY` | Signs and verifies JWT tokens |
+| `ALGORITHM` | Hashing algorithm used for JWT |
+| `CryptContext` | Hashes and verifies passwords |
+| `OAuth2PasswordBearer` | Reads JWT tokens from incoming requests |
+| `CreateUserRequest` | Validates user registration data |
+| `Token` | Defines the login response format |
+| `get_db()` | Creates and closes a database session automatically |
+
+---
+
+# Create User API
+
+This API is used to register a new user in the database.
+
+Instead of storing the user's password directly, the password is first **hashed** using **bcrypt** and then saved in the database.
+
+---
+
+## Creating a New User
+
+```python
+@router.post("/", status_code=status.HTTP_201_CREATED)
+async def create_user(
+    db: db_dependency,
+    create_user_request: CreateUserRequest
+):
+    create_user_model = Users(
+        username=create_user_request.username,
+        hashed_password=bcrypt_context.hash(create_user_request.password)
+    )
+
+    db.add(create_user_model)
+    db.commit()
+```
+
+---
+
+## 🧠 How it works
+
+1. Client sends the username and password.
+2. FastAPI validates the request using `CreateUserRequest`.
+3. The password is hashed using **bcrypt**.
+4. A new `Users` object is created.
+5. The user is added to the database session.
+6. `db.commit()` permanently saves the user in the database.
+
+---
+
+## Hashing the Password
+
+```python
+hashed_password = bcrypt_context.hash(create_user_request.password)
+```
+
+### 🧠 Why hash the password?
+
+Passwords should **never** be stored as plain text.
+
+For example, instead of storing:
+
+```text
+password123
+```
+
+the database stores something like:
+
+```text
+$2b$12$L8nM4rP2...
+```
+
+This protects users even if the database is leaked.
+
+During login, the entered password is hashed and compared with the stored hash.
+
+---
+
+## Saving User to Database
+
+### Add the object to the session
+
+```python
+db.add(create_user_model)
+```
+
+`db.add()` adds the new user to the current database session.
+
+At this point, the user is **not yet stored permanently**.
+
+---
+
+### Save the changes
+
+```python
+db.commit()
+```
+
+`db.commit()` permanently saves the new user in the PostgreSQL database.
+
+Without calling `db.commit()`:
+
+- The user is added only to the current session.
+- The database remains unchanged.
+- The new user will not be saved.
+
+---
+
+## 📌 Summary
+
+| Function | Purpose |
+|----------|---------|
+| `CreateUserRequest` | Validates the incoming user data |
+| `bcrypt_context.hash()` | Converts the password into a secure hash |
+| `Users()` | Creates a new database object |
+| `db.add()` | Adds the object to the current database session |
+| `db.commit()` | Permanently saves the user in the database |
