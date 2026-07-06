@@ -51,7 +51,7 @@ def get_all_products(db:Session= Depends(get_db)):
 
 @app.get("/products/{id}")
 def get_product_by_id(id: int, db:Session= Depends(get_db)):
-    db_product= db.query(database_models.Product).filter(database_models.Product.id==id).first()
+    db_product= db.query(database_models.Product).filter(database_models.Product.id == id).first()
     if db_product:
         return db_product
     return "Product not found"

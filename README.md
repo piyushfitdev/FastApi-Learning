@@ -796,7 +796,7 @@ Output:
 This dictionary can then be used to create a SQLAlchemy model.
 
 ---
-
+ 
 ## Understanding `**` (Double Asterisk)
 
 The `**` operator is used to unpack a dictionary into keyword arguments.
