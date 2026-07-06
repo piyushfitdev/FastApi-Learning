@@ -18,7 +18,11 @@
   - [PUT - Update Data](#put---update-data)
   - [DELETE - Delete Data](#delete---delete-data)
 
-
+- [CORS Middleware](#cors-middleware)
+  - [What is CORS?](#what-is-cors)
+  - [Adding CORS Middleware](#adding-cors-middleware)
+  - [Understanding the Configuration](#understanding-the-configuration)
+  - [Why is CORS Needed?](#why-is-cors-needed)
 
 
 ---
@@ -294,7 +298,7 @@ This example uses an in-memory Python list, so all changes are lost when the ser
 
 In real applications, PUT requests usually update data stored in a database such as PostgreSQL or MySQL.
 
-### 🔴 DELETE - Delete Data
+### DELETE - Delete Data
 
 Used to remove existing data from the server.
 
@@ -358,3 +362,150 @@ In real-world applications:
   ```
 - Data is deleted from a database (not a list).
 - Proper status codes like `200 OK` or `404 Not Found` are used instead of plain strings.
+
+
+---
+
+# CORS Middleware
+
+CORS (Cross-Origin Resource Sharing) is a security feature used by web browsers.
+
+It controls **which frontend applications are allowed to communicate with your FastAPI backend**.
+
+Without CORS, browsers block requests coming from different origins for security reasons.
+
+---
+
+## What is CORS?
+
+An **Origin** is made up of:
+
+- Protocol (`http` or `https`)
+- Domain (`localhost`, `example.com`)
+- Port (`3000`, `8000`, etc.)
+
+Example:
+
+Frontend:
+```text
+http://localhost:3000
+```
+
+Backend:
+```text
+http://localhost:8000
+```
+
+Since the ports are different, these are considered **different origins**.
+
+By default, the browser blocks communication between them.
+
+---
+
+## Adding CORS Middleware
+
+```python
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_methods=["*"]
+)
+```
+
+---
+
+## Understanding the Configuration
+
+### `CORSMiddleware`
+
+Adds CORS support to your FastAPI application.
+
+---
+
+### `allow_origins`
+
+```python
+allow_origins=["http://localhost:3000"]
+```
+
+Specifies which frontend applications are allowed to access the backend.
+
+In this example:
+
+✔ Allowed:
+
+```text
+http://localhost:3000
+```
+
+❌ Not Allowed:
+
+```text
+http://localhost:5173
+http://example.com
+```
+
+---
+
+### `allow_methods`
+
+```python
+allow_methods=["*"]
+```
+
+Allows all HTTP methods.
+
+This includes:
+
+- GET
+- POST
+- PUT
+- DELETE
+- PATCH
+- OPTIONS
+
+You can also allow only specific methods:
+
+```python
+allow_methods=["GET", "POST"]
+```
+
+---
+
+## Why is CORS Needed?
+
+Suppose you have:
+
+Frontend:
+```text
+http://localhost:3000
+```
+
+Backend:
+```text
+http://localhost:8000
+```
+
+When the frontend tries to call:
+
+```text
+GET http://localhost:8000/products
+```
+
+The browser first checks whether the backend allows requests from `localhost:3000`.
+
+If CORS is not configured, the browser blocks the request and shows a **CORS error**.
+
+By adding `CORSMiddleware`, you tell the browser that the frontend is allowed to access your API.
+
+---
+
+## 📌 Summary
+
+| Configuration | Purpose |
+|--------------|---------|
+| `CORSMiddleware` | Enables Cross-Origin Resource Sharing |
+| `allow_origins` | Specifies which frontend URLs can access the backend |
+| `allow_methods` | Specifies which HTTP methods are allowed |
