@@ -62,6 +62,16 @@
   - [Creating a New User](#creating-a-new-user)
   - [Hashing the Password](#hashing-the-password)
   - [Saving User to Database](#saving-user-to-database)
+  - [JWT Login & Authentication](#jwt-login--authentication)
+  - [Login API](#login-api)
+  - [Authenticating the User](#authenticating-the-user)
+  - [Creating an Access Token](#creating-an-access-token)
+  - [Getting the Current User](#getting-the-current-user)
+- [Protecting Routes with JWT](#protecting-routes-with-jwt)
+  - [Register Authentication Router](#register-authentication-router)
+  - [Creating Dependencies](#creating-dependencies)
+  - [Creating a Protected API](#creating-a-protected-api)
+
 
 ---
 
@@ -1992,3 +2002,571 @@ Without calling `db.commit()`:
 | `Users()` | Creates a new database object |
 | `db.add()` | Adds the object to the current database session |
 | `db.commit()` | Permanently saves the user in the database |
+
+---
+
+# JWT Login & Authentication
+
+JWT authentication works in four main steps:
+
+1. User enters their username and password.
+2. The server verifies the credentials.
+3. If the credentials are correct, a JWT Access Token is generated.
+4. The client uses this token to access protected APIs.
+
+---
+
+## Login API
+
+```python
+@router.post("/token", response_model=Token)
+async def login_For_access_token(
+    form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
+    db: db_dependency
+):
+    user = authenticate_user(
+        form_data.username,
+        form_data.password,
+        db
+    )
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate user."
+        )
+
+    token = create_access_token(
+        user.username,
+        user.id,
+        timedelta(minutes=20)
+    )
+
+    return {
+        "access_token": token,
+        "token_type": "bearer"
+    }
+```
+
+### 🧠 How it works
+
+1. User sends username and password.
+2. `OAuth2PasswordRequestForm` receives the login data.
+3. `authenticate_user()` verifies the credentials.
+4. If authentication fails, a **401 Unauthorized** error is returned.
+5. If authentication succeeds, a JWT token is created.
+6. The token is returned to the client.
+
+---
+
+## Authenticating the User
+
+```python
+def authenticate_user(username: str, password: str, db):
+    user = db.query(Users).filter(
+        Users.username == username
+    ).first()
+
+    if not user:
+        return False
+
+    if not bcrypt_context.verify(
+        password,
+        user.hashed_password
+    ):
+        return False
+
+    return user
+```
+
+### 🧠 What does this function do?
+
+This function verifies whether the username and password entered by the user are correct.
+
+---
+
+### Step 1 - Find the user
+
+```python
+user = db.query(Users).filter(
+    Users.username == username
+).first()
+```
+
+Searches the database for the entered username.
+
+If no user exists, authentication fails.
+
+---
+
+### Step 2 - Verify the password
+
+```python
+bcrypt_context.verify(
+    password,
+    user.hashed_password
+)
+```
+
+The entered password is compared with the hashed password stored in the database.
+
+If they match, authentication is successful.
+
+---
+
+## Creating an Access Token
+
+```python
+def create_access_token(
+    username: str,
+    user_id: int,
+    expires_delta: timedelta
+):
+    encode = {
+        "sub": username,
+        "id": user_id
+    }
+
+    expires = datetime.utcnow() + expires_delta
+
+    encode.update({
+        "exp": expires
+    })
+
+    return jwt.encode(
+        encode,
+        SECRET_KEY,
+        algorithm=ALGORITHM
+    )
+```
+
+### 🧠 What is an Access Token?
+
+An Access Token is a secure JWT that proves the user has successfully logged in.
+
+Instead of sending the username and password with every request, the client sends this token.
+
+---
+
+### JWT Payload
+
+```python
+encode = {
+    "sub": username,
+    "id": user_id
+}
+```
+
+The payload stores information that will be saved inside the JWT.
+
+In this example:
+
+- `sub` → Username (Subject)
+- `id` → User ID
+
+---
+
+### Token Expiration
+
+```python
+expires = datetime.utcnow() + expires_delta
+```
+
+Sets the expiration time of the token.
+
+Example:
+
+```python
+timedelta(minutes=20)
+```
+
+means the token will expire after **20 minutes**.
+
+---
+
+### Adding Expiration
+
+```python
+encode.update({
+    "exp": expires
+})
+```
+
+Adds the expiration time to the JWT payload.
+
+Once the expiration time is reached, the token becomes invalid.
+
+---
+
+### Generating the JWT
+
+```python
+jwt.encode(
+    encode,
+    SECRET_KEY,
+    algorithm=ALGORITHM
+)
+```
+
+Creates a signed JWT using:
+
+- Payload
+- Secret Key
+- Hashing Algorithm
+
+The generated token is returned to the client.
+
+---
+
+## Getting the Current User
+
+```python
+async def get_current_user(
+    token: Annotated[
+        str,
+        Depends(oauth2_bearer)
+    ]
+):
+    try:
+        payload = jwt.decode(
+            token,
+            SECRET_KEY,
+            algorithms=[ALGORITHM]
+        )
+
+        username: str = payload.get("sub")
+        user_id: int = payload.get("id")
+
+        if username is None or user_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Could not validate user."
+            )
+
+        return {
+            "username": username,
+            "id": user_id
+        }
+
+    except JWTError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate user."
+        )
+```
+
+### 🧠 What does this function do?
+
+This function checks whether the JWT token sent by the client is valid.
+
+If the token is valid, it extracts the user's information from the token.
+
+---
+
+### Step 1 - Receive the Token
+
+```python
+token: Annotated[
+    str,
+    Depends(oauth2_bearer)
+]
+```
+
+FastAPI automatically reads the JWT from the request's **Authorization** header.
+
+Example:
+
+```text
+Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
+```
+
+---
+
+### Step 2 - Decode the Token
+
+```python
+payload = jwt.decode(
+    token,
+    SECRET_KEY,
+    algorithms=[ALGORITHM]
+)
+```
+
+The token is decoded using the same Secret Key and Algorithm that were used while creating it.
+
+If the token has been modified or expired, decoding fails.
+
+---
+
+### Step 3 - Extract User Information
+
+```python
+username = payload.get("sub")
+user_id = payload.get("id")
+```
+
+Reads the stored user information from the JWT payload.
+
+---
+
+### Step 4 - Return Current User
+
+If the token is valid:
+
+```python
+return {
+    "username": username,
+    "id": user_id
+}
+```
+
+The authenticated user's information is returned.
+
+---
+
+## 📌 JWT Authentication Flow
+
+```text
+User Login
+     │
+     ▼
+Username + Password
+     │
+     ▼
+authenticate_user()
+     │
+     ▼
+Password Verified
+     │
+     ▼
+create_access_token()
+     │
+     ▼
+JWT Token Generated
+     │
+     ▼
+Client Stores Token
+     │
+     ▼
+Protected API Request
+     │
+     ▼
+get_current_user()
+     │
+     ▼
+JWT Verified
+     │
+     ▼
+Access Granted
+```
+
+---
+
+## 📌 Summary
+
+| Function | Purpose |
+|----------|---------|
+| `login_For_access_token()` | Logs in the user and returns a JWT token |
+| `authenticate_user()` | Verifies the username and password |
+| `bcrypt_context.verify()` | Compares the entered password with the stored hashed password |
+| `create_access_token()` | Creates a signed JWT with user information |
+| `jwt.encode()` | Generates the JWT token |
+| `jwt.decode()` | Verifies and decodes the JWT token |
+| `get_current_user()` | Retrieves the currently authenticated user from the JWT |
+
+---
+
+# Protecting Routes with JWT
+
+After creating the authentication system in `auth.py`, we need to connect it with our main FastAPI application.
+
+This allows us to:
+
+- Register authentication routes.
+- Verify JWT tokens before accessing protected APIs.
+- Get details of the currently logged-in user.
+
+---
+
+## Register Authentication Router
+
+```python
+app.include_router(auth.router)
+```
+
+### 🧠 What does this do?
+
+This line registers all the routes defined in `auth.py`.
+
+For example, if `auth.py` contains:
+
+```python
+@router.post("/token")
+```
+
+and the router has:
+
+```python
+prefix="/auth"
+```
+
+The final endpoint becomes:
+
+```text
+POST /auth/token
+```
+
+Without `app.include_router()`, the routes inside `auth.py` would never become part of the FastAPI application.
+
+---
+
+## Creating Dependencies
+
+### Database Dependency
+
+```python
+db_dependency = Annotated[
+    Session,
+    Depends(get_db)
+]
+```
+
+### 🧠 Purpose
+
+Instead of writing:
+
+```python
+db: Session = Depends(get_db)
+```
+
+inside every API, we create a reusable dependency.
+
+Now we can simply write:
+
+```python
+db: db_dependency
+```
+
+This makes the code shorter and easier to read.
+
+---
+
+### User Dependency
+
+```python
+user_dependency = Annotated[
+    dict,
+    Depends(get_current_user)
+]
+```
+
+### 🧠 Purpose
+
+This dependency automatically:
+
+- Reads the JWT token from the request.
+- Verifies whether the token is valid.
+- Decodes the token.
+- Returns the authenticated user's information.
+
+Any API using this dependency becomes a **protected API**.
+
+---
+
+## Creating a Protected API
+
+```python
+@app.get("/", status_code=status.HTTP_200_OK)
+async def user(
+    user: user_dependency,
+    db: db_dependency
+):
+    if user is None:
+        raise HTTPException(
+            status_code=401,
+            detail="Authentication Failed"
+        )
+
+    return {
+        "User": user
+    }
+```
+
+---
+
+## 🧠 How it works
+
+1. Client sends a request to the API.
+2. FastAPI checks `user_dependency`.
+3. `get_current_user()` is called automatically.
+4. The JWT token is extracted from the **Authorization** header.
+5. The token is verified.
+6. If valid, the user information is returned.
+7. If invalid or expired, a **401 Unauthorized** error is returned.
+8. If authentication succeeds, the protected API executes normally.
+
+---
+
+## JWT Authentication Flow
+
+```text
+Client
+   │
+   ▼
+Authorization: Bearer <JWT Token>
+   │
+   ▼
+Depends(get_current_user)
+   │
+   ▼
+JWT Verification
+   │
+   ▼
+Token Valid?
+ ┌─────────────┐
+ │             │
+Yes           No
+ │             │
+ ▼             ▼
+Return User   401 Unauthorized
+ │
+ ▼
+Protected API Executes
+```
+
+---
+
+## Why use `Annotated`?
+
+`Annotated` combines:
+
+- The data type (`Session`, `dict`)
+- The dependency (`Depends()`)
+
+into a single reusable type.
+
+Instead of repeating:
+
+```python
+db: Session = Depends(get_db)
+```
+
+in every endpoint, you can simply write:
+
+```python
+db: db_dependency
+```
+
+This improves code readability and reduces repetition.
+
+---
+
+## 📌 Summary
+
+| Component | Purpose |
+|----------|---------|
+| `app.include_router()` | Registers all authentication routes from `auth.py` |
+| `db_dependency` | Provides a reusable database session |
+| `user_dependency` | Provides the authenticated user's information |
+| `Depends(get_current_user)` | Verifies the JWT token before executing the API |
+| Protected API | Allows access only to authenticated users |
