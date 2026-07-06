@@ -1,6 +1,8 @@
 # Python Virtual Environment (`venv`)
 
-## 📌 Table of Contents
+# 📚 Table of Contents
+
+## 🚀 FastAPI Basics
 - [What is Virtual Environment?](#what-is-virtual-environment)
 - [Creating a Virtual Environment](#creating-a-virtual-environment)
 - [Activating (PowerShell)](#activating-powershell)
@@ -8,57 +10,39 @@
 - [Installing FastAPI and Uvicorn](#installing-fastapi-and-uvicorn)
 - [Basic FastAPI Code](#basic-fastapi-code)
 - [Running the Server](#running-the-server)
-- [What is CRUD?](#what-is-crud)
-  - [GET - Read Data](#get---read-data)
-    - [What is models.py and why we use it](#what-is-modelspy-and-why-we-use-it)
-      - [Product Class (models.py)](#product-class-modelspy)
-      - [Main FastAPI Code](#main-fastapi-code)
-  - [POST - Create Data](#post---create-data)
-  - [PUT - Update Data](#put---update-data)
-  - [DELETE - Delete Data](#delete---delete-data)
 
-## PostgreSql
-- [Connecting FastAPI with PostgreSQL](#connecting-fastapi-with-postgresql)
-  - [Create `database.py`](#create-databasepy)
-  - [Create `database_models.py`](#create-database_modelspy)
-  - [Changes in `main.py`](#changes-in-mainpy)
+---
+
+## 🔄 CRUD Operations
+- [What is CRUD?](#what-is-crud)
+  - [GET (Read)](#get---read-data)
+  - [POST (Create)](#post---create-data)
+  - [PUT (Update)](#put---update-data)
+  - [DELETE (Delete)](#delete---delete-data)
+
+- [Using `models.py`](#what-is-modelspy-and-why-we-use-it)
+
+---
+
+## 🗄️ PostgreSQL & SQLAlchemy
 - [Install Required Libraries](#install-required-libraries)
-  - [Connecting FastAPI with PostgreSQL](#connecting-fastapi-with-postgresql)
-  - [Create `database.py`](#create-databasepy)
-  - [Create `database_models.py`](#create-database_modelspy)
-  - [Changes in `main.py`](#changes-in-mainpy)
-  - [Creating Database Tables](#creating-database-tables)
-  - [Fetching Data from Database](#fetching-data-from-database)
+- [Connecting FastAPI with PostgreSQL](#connecting-fastapi-with-postgresql)
+- [Creating Database Tables](#creating-database-tables)
 - [Insert Initial Data into Database](#insert-initial-data-into-database)
-  - [Creating `init_db()`](#creating-init_db)
-  - [Understanding `model_dump()`](#understanding-model_dump)
-  - [Understanding `**` (Double Asterisk)](#understanding--double-asterisk)
-- [Dependency Injection in FastAPI](#dependency-injection-in-fastapi)
-  - [Creating `get_db()`](#creating-get_db)
-  - [Using `Depends()`](#using-depends)
-  - [Fetching Data Using Dependency Injection](#fetching-data-using-dependency-injection)
-  - [Get Product by ID](#get-product-by-id)
-    - [Finding a Product Using `filter()`](#finding-a-product-using-filter)
-    - [Using `first()`](#using-first)
-  - [Add a Product to Database](#add-a-product-to-database)
-    - [Adding a Product](#adding-a-product)
-    - [Using `db.add()`](#using-dbadd)
-    - [Using `db.commit()`](#using-dbcommit)
-  - [Update Product in Database](#update-product-in-database)
-    - [Updating a Product](#updating-a-product)
-    - [Finding the Product](#finding-the-product)
-    - [Updating Product Details](#updating-product-details)
-    - [Saving Changes with `db.commit()`](#saving-changes-with-dbcommit)
-  - [Delete Product from Database](#delete-product-from-database)
-    - [Deleting a Product](#deleting-a-product)
-    - [Finding the Product](#finding-the-product)
-    - [Using `db.delete()`](#using-dbdelete)
-    - [Saving Changes with `db.commit()`](#saving-changes-with-dbcommit)
+- [Dependency Injection](#dependency-injection-in-fastapi)
+
+---
+
+## 🛠️ Database CRUD Operations
+- [Get Product by ID](#get-product-by-id)
+- [Add Product](#add-a-product-to-database)
+- [Update Product](#update-product-in-database)
+- [Delete Product](#delete-product-from-database)
+
+---
+
+## 🌐 Frontend Integration
 - [CORS Middleware](#cors-middleware)
-  - [What is CORS?](#what-is-cors)
-  - [Adding CORS Middleware](#adding-cors-middleware)
-  - [Understanding the Configuration](#understanding-the-configuration)
-  - [Why is CORS Needed?](#why-is-cors-needed)
 
 
 ---
