@@ -10,7 +10,7 @@
 - [Installing FastAPI and Uvicorn](#installing-fastapi-and-uvicorn)
 - [Basic FastAPI Code](#basic-fastapi-code)
 - [Running the Server](#running-the-server)
-- [Web Architecture: Frontend, Backend, Database Flow](#web-architecture:-Frontend,-Backend,-Database-Flow)
+- [Web Architecture: Frontend, Backend, Database Flow](#web-architecture-frontend-backend-database-flow)
 ---
 
 ## 🔄 CRUD Operations
