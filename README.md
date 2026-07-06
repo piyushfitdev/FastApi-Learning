@@ -17,7 +17,7 @@
   - [PUT - Update Data](#put---update-data)
   - [DELETE - Delete Data](#delete---delete-data)
 
-##PostgreSql
+## PostgreSql
 - [Connecting FastAPI with PostgreSQL](#connecting-fastapi-with-postgresql)
   - [Create `database.py`](#create-databasepy)
   - [Create `database_models.py`](#create-database_modelspy)
