@@ -969,7 +969,7 @@ The product is searched using its **ID**. If it exists, its details are updated 
 ## Updating a Product
 
 ```python
-@app.put("/product")
+@app.put("/product/{id}")
 def update_product(id: int, product: Product, db: Session = Depends(get_db)):
     db_product = db.query(database_models.Product).filter(database_models.Product.id == id).first()
 
@@ -1072,7 +1072,7 @@ The product is searched using its **ID**. If the product exists, it is removed f
 ## Deleting a Product
 
 ```python
-@app.delete("/product")
+@app.delete("/product/{id}")
 def delete_product(id: int, db: Session = Depends(get_db)):
     db_product = db.query(database_models.Product).filter(
         database_models.Product.id == id
