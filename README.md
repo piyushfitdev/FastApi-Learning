@@ -72,7 +72,20 @@
   - [Creating Dependencies](#creating-dependencies)
   - [Creating a Protected API](#creating-a-protected-api)
 
-
+## Frontend
+- [React Setup](#react-setup)
+  - [Create a React Project](#create-a-react-project)
+  - [Add Bootstrap to React](#add-bootstrap-to-react)
+  - [Install Axios](#install-axios)
+  
+- [Import Statements](#import-statements)
+- [State Management](#state-management)
+- [Fetching Transactions](#fetching-transactions)
+- [useEffect Hook](#useeffect-hook)
+- [Handling Form Input](#handling-form-input)
+- [Submitting the Form](#submitting-the-form)
+- [Rendering the UI](#rendering-the-ui)
+- [Displaying Transactions](#displaying-transactions)
 ---
 
 ## What is Virtual Environment?
@@ -2570,3 +2583,696 @@ This improves code readability and reduces repetition.
 | `user_dependency` | Provides the authenticated user's information |
 | `Depends(get_current_user)` | Verifies the JWT token before executing the API |
 | Protected API | Allows access only to authenticated users |
+
+
+# React Setup
+
+This section covers creating a React project and configuring Bootstrap for styling.
+
+---
+
+## Create a React Project
+
+### Step 1: Create a directory
+
+Create a new folder named:
+
+```text
+React
+```
+
+---
+
+### Step 2: Open Terminal
+
+Open a new terminal and navigate to the `React` folder.
+
+Example:
+
+```bash
+cd React
+```
+
+---
+
+### Step 3: Create a React Application
+
+Run the following command:
+
+```bash
+npx create-react-app finance-app
+```
+
+This creates a new React application named **finance-app**.
+
+Project structure:
+
+```text
+React
+└── finance-app
+```
+
+---
+
+## Add Bootstrap to React
+
+Bootstrap provides pre-built responsive UI components and utility classes, making frontend development faster.
+
+### Step 1: Open Bootstrap Documentation
+
+Visit:
+
+https://getbootstrap.com/docs/4.4/getting-started/introduction/
+
+---
+
+### Step 2: Add Bootstrap CSS
+
+Copy the Bootstrap CSS `<link>` tag from the documentation:
+
+```html
+<!-- Bootstrap CSS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.4.1/dist/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
+```
+
+Open:
+
+```text
+React/
+└── finance-app/
+    └── public/
+        └── index.html
+```
+
+Paste it between:
+
+```html
+<meta ... />
+
+<!-- Paste Here -->
+
+<link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
+```
+
+---
+
+### Step 3: Add Bootstrap JavaScript
+
+Copy the following script:
+
+```html
+<script src="https://code.jquery.com/jquery-3.4.1.slim.min.js" integrity="sha384-J6qa4849blE2+poT4WnyKhv5vZF5SrPo0iEjwBvKU7imGFAV0wwj1yYfoRSJoZ+n" crossorigin="anonymous"></script>
+```
+
+Paste it inside `public/index.html` just before the closing `</body>` tag.
+
+```html
+<!-- Paste Here -->
+
+</body>
+```
+
+---
+
+Your React project is now configured with Bootstrap and ready for frontend development.
+
+## Install Axios
+
+Axios is a JavaScript library used to make HTTP requests from the frontend to the backend. It simplifies sending GET, POST, PUT, DELETE, and other API requests compared to using the built-in `fetch()` API.
+
+### Install Axios
+
+Open the terminal inside your React project and run:
+
+```bash
+npm install axios
+```
+
+### Why Axios?
+
+- Connects the React frontend with backend APIs (FastAPI, Express, etc.).
+- Supports GET, POST, PUT, DELETE, PATCH requests.
+- Automatically converts JSON responses.
+- Easy to configure default headers (e.g., JWT Authentication tokens).
+- Better error handling than the native `fetch()` API.
+
+Example:
+
+```javascript
+import axios from "axios";
+
+axios.get("http://127.0.0.1:8000/users")
+    .then(response => {
+        console.log(response.data);
+    })
+    .catch(error => {
+        console.error(error);
+    });
+```
+
+---
+
+# Import Statements
+
+```javascript
+import React, { useState, useEffect } from "react";
+import api from "./api";
+```
+
+### `useState`
+
+Used to store and update values that change while the application is running.
+
+Examples:
+
+- Form data
+- User information
+- Transactions
+- Counter values
+
+### `useEffect`
+
+Used to execute code automatically when the component renders or when specific values change.
+
+Examples:
+
+- Fetch data from backend
+- Call an API
+- Start a timer
+
+### `api`
+
+Imports the Axios instance from `api.js`.
+
+Instead of writing:
+
+```javascript
+axios.get(...)
+```
+
+throughout the application, we use:
+
+```javascript
+api.get(...)
+```
+
+which already contains the backend URL.
+
+---
+
+# State Management
+
+## Transactions State
+
+```javascript
+const [transactions, setTransactions] = useState([]);
+```
+
+Stores all transactions received from the backend.
+
+Initially:
+
+```javascript
+[]
+```
+
+After fetching data:
+
+```javascript
+[
+    {
+        id:1,
+        amount:500,
+        category:"Food"
+    },
+    ...
+]
+```
+
+Updating the state:
+
+```javascript
+setTransactions(response.data);
+```
+
+automatically re-renders the UI.
+
+---
+
+## Form State
+
+```javascript
+const [formData, setFormData] = useState({
+    amount:'',
+    category:'',
+    description:'',
+    is_income:false,
+    date:''
+});
+```
+
+Stores every value entered in the form.
+
+Example:
+
+```javascript
+{
+    amount:200,
+    category:"Food",
+    description:"Pizza",
+    is_income:false,
+    date:"2026-07-12"
+}
+```
+
+---
+
+# Fetching Transactions
+
+```javascript
+const fetchTransactions = async () => {
+    const response = await api.get("/transactions/");
+    setTransactions(response.data);
+};
+```
+
+### Purpose
+
+Retrieves every transaction from the FastAPI backend.
+
+Flow:
+
+```text
+React
+   │
+GET /transactions/
+   │
+FastAPI
+   │
+Database
+   │
+Response
+   │
+setTransactions()
+```
+
+---
+
+# useEffect Hook
+
+```javascript
+useEffect(() => {
+    fetchTransactions();
+}, []);
+```
+
+### Why use it?
+
+Runs the function once when the page loads.
+
+Without it:
+
+The table would remain empty until the user manually refreshed.
+
+The empty dependency array:
+
+```javascript
+[]
+```
+
+means:
+
+> Execute only once when the component is mounted.
+
+---
+
+# Handling Form Input
+
+```javascript
+const handleInputChange = (event) => {
+    const value =
+        event.target.type === "checkbox"
+            ? event.target.checked
+            : event.target.value;
+
+    setFormData({
+        ...formData,
+        [event.target.name]: value,
+    });
+};
+```
+
+### Purpose
+
+Updates the form state whenever the user types or clicks.
+
+Example:
+
+User types:
+
+```text
+Amount = 500
+```
+
+React updates
+
+```javascript
+formData.amount = 500
+```
+
+---
+
+## Why check for checkbox?
+
+Checkboxes don't use `value`.
+
+Instead they use
+
+```javascript
+checked
+```
+
+Text input:
+
+```javascript
+event.target.value
+```
+
+Checkbox:
+
+```javascript
+event.target.checked
+```
+
+returns
+
+```javascript
+true
+```
+
+or
+
+```javascript
+false
+```
+
+---
+
+## Spread Operator
+
+```javascript
+...formData
+```
+
+Copies all existing values.
+
+Suppose
+
+```javascript
+{
+    amount:500,
+    category:"Food"
+}
+```
+
+User changes only category.
+
+After spreading:
+
+```javascript
+{
+    amount:500,
+    category:"Travel"
+}
+```
+
+Without the spread operator,
+
+every other field would be lost.
+
+---
+
+## Dynamic Property
+
+```javascript
+[event.target.name]
+```
+
+Suppose
+
+```html
+<input
+name="amount"
+```
+
+React automatically updates
+
+```javascript
+formData.amount
+```
+
+If
+
+```html
+name="category"
+```
+
+React updates
+
+```javascript
+formData.category
+```
+
+One function can therefore handle every input field.
+
+---
+
+# Submitting the Form
+
+```javascript
+const handleFormSubmit = async (event) => {
+    event.preventDefault();
+
+    await api.post("/transactions/", formData);
+
+    fetchTransactions();
+
+    setFormData({
+        amount:'',
+        category:'',
+        description:'',
+        is_income:false,
+        date:''
+    });
+};
+```
+
+### `event.preventDefault()`
+
+Stops the browser from refreshing the page after submitting the form.
+
+---
+
+### POST Request
+
+```javascript
+api.post("/transactions/", formData);
+```
+
+Sends the form data to FastAPI.
+
+Example request body:
+
+```json
+{
+    "amount":500,
+    "category":"Food",
+    "description":"Pizza",
+    "is_income":false,
+    "date":"2026-07-12"
+}
+```
+
+---
+
+### Refresh Transactions
+
+```javascript
+fetchTransactions();
+```
+
+Reloads all transactions after inserting a new one.
+
+The table updates immediately.
+
+---
+
+### Reset Form
+
+```javascript
+setFormData(...)
+```
+
+Clears every input field after successful submission.
+
+---
+
+# Rendering the UI
+
+The component returns:
+
+- Navigation Bar
+- Input Form
+- Transactions Table
+
+Everything inside
+
+```javascript
+return (...)
+```
+
+is rendered by React.
+
+---
+
+# Displaying Transactions
+
+```javascript
+<tbody>
+{
+transactions.map((transaction)=>(
+    ...
+))
+}
+</tbody>
+```
+
+### Why use `map()`?
+
+Suppose
+
+```javascript
+transactions = [
+    {id:1},
+    {id:2},
+    {id:3}
+]
+```
+
+`map()` loops through every transaction.
+
+Iteration:
+
+```text
+Transaction 1
+↓
+
+Transaction 2
+↓
+
+Transaction 3
+```
+
+Each iteration creates one table row.
+
+---
+
+## Unique Key
+
+```javascript
+<tr key={transaction.id}>
+```
+
+React uses the key to uniquely identify each row.
+
+Using the database primary key is recommended.
+
+---
+
+## Displaying Boolean Values
+
+```javascript
+transaction.is_income
+    ? "Yes"
+    : "No"
+```
+
+If
+
+```javascript
+true
+```
+
+display
+
+```text
+Yes
+```
+
+Otherwise
+
+```text
+No
+```
+
+This is called the **ternary operator**.
+
+Syntax:
+
+```javascript
+condition
+    ? value_if_true
+    : value_if_false
+```
+
+Example:
+
+```javascript
+age >= 18
+    ? "Adult"
+    : "Minor"
+```
+
+---
+
+# Overall Flow
+
+```text
+Page Loads
+      │
+      ▼
+useEffect()
+      │
+      ▼
+GET /transactions
+      │
+      ▼
+Store in transactions
+      │
+      ▼
+Display Table
+      │
+      ▼
+User Fills Form
+      │
+      ▼
+handleInputChange()
+      │
+      ▼
+formData Updated
+      │
+      ▼
+Submit Form
+      │
+      ▼
+POST /transactions
+      │
+      ▼
+Database Updated
+      │
+      ▼
+Fetch Transactions Again
+      │
+      ▼
+Updated Table Displayed
+```
